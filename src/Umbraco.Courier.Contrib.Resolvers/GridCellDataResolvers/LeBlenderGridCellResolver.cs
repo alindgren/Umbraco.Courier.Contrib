@@ -6,6 +6,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Umbraco.Core;
 using Umbraco.Courier.Core;
+using Umbraco.Courier.Core.Logging;
 using Umbraco.Courier.Core.ProviderModel;
 using Umbraco.Courier.DataResolvers.PropertyDataResolvers;
 using Umbraco.Courier.ItemProviders;
@@ -16,6 +17,9 @@ namespace Umbraco.Courier.Contrib.Resolvers.GridCellDataResolvers
     {
         public override bool ShouldRun(string view, GridValueControlModel cell)
         {
+            CourierLogHelper.Info<LeBlenderGridCellResolver>("view: " + view);
+            CourierLogHelper.Info<LeBlenderGridCellResolver>("cell.Value: " + cell.Value);
+
             return view.Contains("leblender");
         }
 
@@ -33,9 +37,16 @@ namespace Umbraco.Courier.Contrib.Resolvers.GridCellDataResolvers
 
         private void ProcessCell(Item item, ContentProperty propertyData, GridValueControlModel cell, Action action)
         {
+            CourierLogHelper.Info<LeBlenderGridCellResolver>("Starting ProcessCell() - action: " + action.ToString());
+
             // cancel if there's no values
             if (cell.Value == null || cell.Value.HasValues == false)
+            {
+                CourierLogHelper.Info<LeBlenderGridCellResolver>("cell.Value == null || cell.Value.HasValues == false");
                 return;
+            }
+
+            CourierLogHelper.Info<LeBlenderGridCellResolver>("cell.Value [1]: " + cell.Value);
 
             var dataTypeService = ApplicationContext.Current.Services.DataTypeService;
             // get the ItemProvider for the ResolutionManager
@@ -52,12 +63,15 @@ namespace Umbraco.Courier.Contrib.Resolvers.GridCellDataResolvers
                 // loop through each of the property objects
                 foreach (dynamic leBlenderPropertyWrapper in properties)
                 {
+                    CourierLogHelper.Info<LeBlenderGridCellResolver>(" test - point a ");
+
                     // deserialize the value of the wrapper object into a LeBlenderProperty object
                     var leBlenderPropertyJson = leBlenderPropertyWrapper.Value.ToString() as string;
                     // continue if there's no data stored
                     if (string.IsNullOrEmpty(leBlenderPropertyJson)) continue;
 
                     var leBlenderProperty = JsonConvert.DeserializeObject<LeBlenderProperty>(leBlenderPropertyJson);
+                    CourierLogHelper.Info<LeBlenderGridCellResolver>("leBlenderProperty.Value [1]: " + leBlenderProperty.Value);
 
                     // get the DataType of the property
                     var dataType = dataTypeService.GetDataTypeDefinitionById(leBlenderProperty.DataTypeGuid);
@@ -102,6 +116,8 @@ namespace Umbraco.Courier.Contrib.Resolvers.GridCellDataResolvers
                         // run the resolvers (convert UniqueIds/guids back to Ids/integers)
                         ResolutionManager.Instance.ExtractingItem(pseudoPropertyDataItem, propertyDataItemProvider);
                     }
+                    CourierLogHelper.Info<LeBlenderGridCellResolver>("leBlenderProperty.Value [2]: " + leBlenderProperty.Value);
+
                     // replace the property value with the resolved value
                     leBlenderProperty.Value = pseudoPropertyDataItem.Data.First().Value;
                     // add the resolved property to the resolved properties object
@@ -111,6 +127,8 @@ namespace Umbraco.Courier.Contrib.Resolvers.GridCellDataResolvers
             }
             // replace the cell value with all the resolved values
             cell.Value = JToken.FromObject(newItemValue);
+            CourierLogHelper.Info<LeBlenderGridCellResolver>("cell.Value [2]: " + cell.Value);
+
         }
 
         internal class LeBlenderProperty
